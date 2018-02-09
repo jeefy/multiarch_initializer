@@ -1,0 +1,23 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  initializers:
+    pending: []
+  labels:
+    app: multiarch-initializer
+  name: multiarch-initializer
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: multiarch-initializer
+      name: multiarch-initializer
+    spec:
+      containers:
+        - name: multiarch-initializer
+          image: jeefy/multiarch_initializer:0.0.1
+          imagePullPolicy: Never
+          args:
+            - "-annotation=initializer.kubernetes.io/multiarch"
+            - "-require-annotation=true"
