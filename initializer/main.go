@@ -34,6 +34,9 @@ var (
 	requireAnnotation bool
 )
 
+var node corev1.Node
+var annotationData map[string]interface{}
+
 type config struct {
 	Containers []corev1.Container
 	Volumes    []corev1.Volume
@@ -130,7 +133,7 @@ func initializePod(pod *corev1.Pod, clientset *kubernetes.Clientset) error {
 					}
 					return nil
 				}
-				var annotationData map[string]interface{}
+
 				err := json.Unmarshal([]byte(a[annotation]), annotationData)
 				if err != nil {
 					log.Println("Error unmarshalling annotation data")
@@ -156,7 +159,17 @@ func initializePod(pod *corev1.Pod, clientset *kubernetes.Clientset) error {
 			}
 
 			for index, element := range initializedPod.Spec.Containers {
-				initializedPod.Spec.Containers[index].Image = element.Image
+				if _, ok := annotationData[node.Status.NodeInfo.Architecture]; ok {
+					if val, ok := annotationData[node.Status.NodeInfo.Architecture].(map[string]string)[element.Name]; ok {
+						initializedPod.Spec.Containers[index].Image = val
+					} else {
+						log.Println("Image not set in annotations for " + node.Status.NodeInfo.Architecture + "/" + element.Name)
+						initializedPod.Spec.Containers[index].Image = element.Image
+					}
+				} else {
+					log.Println("Architecture '" + node.Status.NodeInfo.Architecture + "' not set in Pod annotation")
+					initializedPod.Spec.Containers[index].Image = element.Image
+				}
 			}
 
 			oldData, err := json.Marshal(pod)
