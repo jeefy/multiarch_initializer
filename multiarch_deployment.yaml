@@ -1,3 +1,36 @@
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: multiarch-initializer
+rules:
+  - apiGroups:
+      - "*"
+    apiVersions:
+      - "*"
+    resources:
+      - pods
+    verbs:
+      - "*"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: multiarch-initializer
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: multiarch-initializer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: multiarch-initializer
+subjects:
+- kind: ServiceAccount
+  name: multiarch-initializer
+  namespace: kube-system
+---
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
@@ -14,6 +47,7 @@ spec:
         app: multiarch-initializer
       name: multiarch-initializer
     spec:
+      serviceAccountName: multiarch-initializer
       containers:
         - name: multiarch-initializer
           image: jeefy/multiarch_initializer:0.0.1
