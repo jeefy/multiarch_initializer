@@ -17,7 +17,7 @@ spec:
       containers:
         - name: multiarch-initializer
           image: jeefy/multiarch_initializer:0.0.1
-          imagePullPolicy: Never
+          imagePullPolicy: Always
           args:
             - "-annotation=initializer.kubernetes.io/multiarch"
             - "-require-annotation=true"
