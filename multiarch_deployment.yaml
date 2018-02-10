@@ -6,8 +6,6 @@ metadata:
 rules:
   - apiGroups:
       - "*"
-    apiVersions:
-      - "*"
     resources:
       - pods
     verbs:
@@ -17,6 +15,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: multiarch-initializer
+  namespace: kube-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
@@ -39,6 +38,7 @@ metadata:
   labels:
     app: multiarch-initializer
   name: multiarch-initializer
+  namespace: kube-system
 spec:
   replicas: 1
   template:
