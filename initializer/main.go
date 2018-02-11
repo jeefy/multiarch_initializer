@@ -34,7 +34,7 @@ var (
 	requireAnnotation bool
 )
 
-var node corev1.Node
+var node *corev1.Node
 var annotationData map[string]map[string]string
 
 type config struct {
@@ -143,7 +143,7 @@ func initializePod(pod *corev1.Pod, clientset *kubernetes.Clientset) error {
 				}
 
 				nodeClient := clientset.CoreV1().Nodes()
-				node, err := nodeClient.Get(pod.Spec.NodeName, metav1.GetOptions{})
+				node, err = nodeClient.Get(pod.Spec.NodeName, metav1.GetOptions{})
 
 				if err != nil {
 					log.Println("Error getting node " + pod.Spec.NodeName)
