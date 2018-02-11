@@ -1,0 +1,21 @@
+workspace:
+  base: /go
+  path: src/github.com/jeefy/multi_initializer
+
+pipeline:
+  build_binary:
+    image: golang:1.9
+    commands:
+      - cd initializer
+      - go get
+      - ./build
+    when:
+      event: push
+  docker:
+    image: plugins/docker:17.05
+    repo: jeefy/multi_initializer
+    email: jeef111x@gmail.com
+    tag: [ latest, 0.0.1 ]
+    when:
+      branch: master
+      event: push
