@@ -174,6 +174,20 @@ func initializePod(pod *corev1.Pod, clientset *kubernetes.Clientset) error {
 				}
 			}
 
+			for index, element := range initializedPod.Spec.InitContainers {
+				if _, ok := annotationData[node.Status.NodeInfo.Architecture]; ok {
+					if val, ok := annotationData[node.Status.NodeInfo.Architecture][element.Name]; ok {
+						initializedPod.Spec.InitContainers[index].Image = val
+					} else {
+						log.Println("Image not set in annotations for " + node.Status.NodeInfo.Architecture + "/" + element.Name)
+						initializedPod.Spec.InitContainers[index].Image = element.Image
+					}
+				} else {
+					log.Println("Architecture '" + node.Status.NodeInfo.Architecture + "' not set in Pod annotation")
+					initializedPod.Spec.InitContainers[index].Image = element.Image
+				}
+			}
+
 			oldData, err := json.Marshal(pod)
 			if err != nil {
 				return err
