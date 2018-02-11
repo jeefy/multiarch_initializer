@@ -135,7 +135,8 @@ func initializePod(pod *corev1.Pod, clientset *kubernetes.Clientset) error {
 				}
 
 				annotationData = make(map[string]map[string]string)
-				err := json.Unmarshal([]byte(a[annotation]), annotationData)
+
+				err := json.Unmarshal([]byte(a[annotation]), &annotationData)
 				if err != nil {
 					log.Println("Error unmarshalling annotation data")
 					return err
