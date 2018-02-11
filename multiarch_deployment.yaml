@@ -41,7 +41,7 @@ metadata:
   name: multiarch-initializer
   namespace: kube-system
 spec:
-  replicas: 1
+  replicas: 2
   template:
     metadata:
       labels:
