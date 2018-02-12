@@ -12,7 +12,7 @@ pipeline:
     when:
       event: push
   docker:
-    image: plugins/docker
+    image: plugins/docker:17.05
     repo: jeefy/multi_initializer
     email: jeef111x@gmail.com
     secrets: [ docker_username, docker_password ]
