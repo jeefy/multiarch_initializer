@@ -15,6 +15,7 @@ pipeline:
     image: plugins/docker
     repo: jeefy/multi_initializer
     email: jeef111x@gmail.com
+    secrets: [ docker_username, docker_password ]
     tag: [ latest, 0.0.1 ]
     when:
       branch: master
