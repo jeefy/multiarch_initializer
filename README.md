@@ -9,13 +9,13 @@ Let's have some fun.
 ```
 git clone [repo_url]
 cd multiarch_initializer
-kubectl apply -f multiarch_configmap.yaml
-kubectl apply -f multiarch_deployment.yaml
+kubectl apply -f manifests/multiarch_configmap.yaml
+kubectl apply -f manifests/multiarch_deployment.yaml
 ```
 Make sure the pod has been deployed in kube-system (otherwise race conditions may occur)
 *Then*
 ```
-kubectl apply -f multiarch_initializer_config.yaml
+kubectl apply -f manifests/multiarch_initializer_config.yaml
 ```
 
 #### Race Condition?
