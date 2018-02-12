@@ -18,6 +18,9 @@ Make sure the pod has been deployed in kube-system (otherwise race conditions ma
 kubectl apply -f multiarch_initializer_config.yaml
 ```
 
+### Race Condition?
+Yeah, if you have the initializer configured beforehand, the initializer pod won't start. Oops!
+
 #### Configure Services
 
 Add the annotation `initializer.kubernetes.io/multiarch` with values depending on the service/application/thing
