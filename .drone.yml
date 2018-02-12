@@ -12,7 +12,7 @@ pipeline:
     when:
       event: push
   docker:
-    image: plugins/docker:17.05
+    image: plugins/docker
     repo: jeefy/multi_initializer
     email: jeef111x@gmail.com
     tag: [ latest, 0.0.1 ]
