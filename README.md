@@ -21,9 +21,9 @@ kubectl apply -f multiarch_initializer_config.yaml
 ### Race Condition?
 Yeah, if you have the initializer configured beforehand, the initializer pod won't start. Oops!
 
-#### Configure Services
+#### Configuring Pods
 
-Add the annotation `initializer.kubernetes.io/multiarch` with values depending on the service/application/thing
+Add the annotation `initializer.kubernetes.io/multiarch` to the pod/template spec. Values will vary based on what it is.
 
 These examples are for a `Raspberry Pi3` with `Raspbian`
 ```
