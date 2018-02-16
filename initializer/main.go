@@ -160,33 +160,8 @@ func initializePod(pod *corev1.Pod, clientset *kubernetes.Clientset) error {
 				}
 			}
 
-			for index, element := range initializedPod.Spec.Containers {
-				if _, ok := annotationData[node.Status.NodeInfo.Architecture]; ok {
-					if val, ok := annotationData[node.Status.NodeInfo.Architecture][element.Name]; ok {
-						initializedPod.Spec.Containers[index].Image = val
-					} else {
-						log.Println("Image not set in annotations for " + node.Status.NodeInfo.Architecture + "/" + element.Name)
-						initializedPod.Spec.Containers[index].Image = element.Image
-					}
-				} else {
-					log.Println("Architecture '" + node.Status.NodeInfo.Architecture + "' not set in Pod annotation")
-					initializedPod.Spec.Containers[index].Image = element.Image
-				}
-			}
-
-			for index, element := range initializedPod.Spec.InitContainers {
-				if _, ok := annotationData[node.Status.NodeInfo.Architecture]; ok {
-					if val, ok := annotationData[node.Status.NodeInfo.Architecture][element.Name]; ok {
-						initializedPod.Spec.InitContainers[index].Image = val
-					} else {
-						log.Println("Image not set in annotations for " + node.Status.NodeInfo.Architecture + "/" + element.Name)
-						initializedPod.Spec.InitContainers[index].Image = element.Image
-					}
-				} else {
-					log.Println("Architecture '" + node.Status.NodeInfo.Architecture + "' not set in Pod annotation")
-					initializedPod.Spec.InitContainers[index].Image = element.Image
-				}
-			}
+			updateContainerSpec(initializedPod.Spec.Containers, initializedPod, node, annotationData)
+			updateContainerSpec(initializedPod.Spec.InitContainers, initializedPod, node, annotationData)
 
 			oldData, err := json.Marshal(pod)
 			if err != nil {
@@ -211,4 +186,20 @@ func initializePod(pod *corev1.Pod, clientset *kubernetes.Clientset) error {
 	}
 
 	return nil
+}
+
+func updateContainerSpec(containers []corev1.Container, pod *corev1.Pod, node *corev1.Node, annotationData map[string]map[string]string) {
+	for index, element := range containers {
+		if _, ok := annotationData[node.Status.NodeInfo.Architecture]; ok {
+			if val, ok := annotationData[node.Status.NodeInfo.Architecture][element.Name]; ok {
+				containers[index].Image = val
+			} else {
+				log.Println("Image not set in annotations for " + node.Status.NodeInfo.Architecture + "/" + element.Name)
+				containers[index].Image = element.Image
+			}
+		} else {
+			log.Println("Architecture '" + node.Status.NodeInfo.Architecture + "' not set in Pod annotation")
+			containers[index].Image = element.Image
+		}
+	}
 }
