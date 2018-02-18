@@ -6,6 +6,8 @@ pipeline:
   test:
     image: golang:1.9
     commands:
+      - cd initializer
+      - go get
       - go test -v
     when:
       event: push
