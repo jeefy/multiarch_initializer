@@ -55,4 +55,3 @@ spec:
           imagePullPolicy: Always
           args:
             - "-annotation=initializer.kubernetes.io/multiarch"
-            - "-require-annotation=true"
