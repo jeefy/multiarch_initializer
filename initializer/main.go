@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
+	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 )
@@ -46,7 +47,6 @@ func main() {
 	flag.StringVar(&annotation, "annotation", defaultAnnotation, "The annotation to trigger initialization")
 	flag.StringVar(&initializerName, "initializer-name", defaultInitializerName, "The initializer name")
 	flag.StringVar(&namespace, "namespace", "default", "The configuration namespace")
-	flag.BoolVar(&requireAnnotation, "require-annotation", false, "Require annotation for initialization")
 	flag.Parse()
 
 	log.Println("Starting the Kubernetes initializer...")
@@ -86,7 +86,9 @@ func main() {
 			AddFunc: func(obj interface{}) {
 				pod := obj.(*corev1.Pod)
 				log.Println("New Pod found: " + pod.Name)
-				err := initializePod(obj.(*corev1.Pod), clientset)
+				nodeClient := clientset.CoreV1().Nodes()
+				podClient := clientset.CoreV1().Pods(pod.Namespace)
+				_, err := initializePod(obj.(*corev1.Pod), nodeClient, podClient)
 
 				if err != nil {
 					log.Println(err)
@@ -106,12 +108,22 @@ func main() {
 	close(stop)
 }
 
-func initializePod(pod *corev1.Pod, clientset *kubernetes.Clientset) error {
+func initializePod(pod *corev1.Pod, nodeClient v1.NodeInterface, podClient v1.PodInterface) (*corev1.Pod, error) {
+	if initializerName == "" {
+		initializerName = defaultInitializerName
+	}
+	if annotation == "" {
+		annotation = defaultAnnotation
+	}
+	log.Printf("Initializing pod: %s", pod.Name)
 	if pod.ObjectMeta.GetInitializers() != nil {
-		pendingInitializers := pod.ObjectMeta.GetInitializers().Pending
+		log.Printf("Initializers retrieved")
 
+		pendingInitializers := pod.ObjectMeta.GetInitializers().Pending
+		log.Printf("First initializer: %s", pendingInitializers[0].Name)
+		log.Printf("Does it match %s ?", initializerName)
 		if initializerName == pendingInitializers[0].Name {
-			log.Printf("Initializing pod: %s", pod.Name)
+			log.Printf("Applying initializer %s to %s", initializerName, pod.Name)
 
 			initializedPod := pod.DeepCopy()
 
@@ -121,43 +133,43 @@ func initializePod(pod *corev1.Pod, clientset *kubernetes.Clientset) error {
 			} else {
 				initializedPod.ObjectMeta.Initializers.Pending = append(pendingInitializers[:0], pendingInitializers[1:]...)
 			}
+			log.Printf("Remove self from the list of pending Initializers while preserving order.")
 
-			if requireAnnotation {
-				a := pod.ObjectMeta.GetAnnotations()
-				_, ok := a[annotation]
-				if !ok {
-					log.Printf("Required '%s' annotation missing; skipping multiarch container injection", annotation)
-					_, err := clientset.CoreV1().Pods(pod.Namespace).Update(initializedPod)
-					if err != nil {
-						return err
-					}
-					return nil
-				}
-
-				annotationData = make(map[string]map[string]string)
-
-				err := json.Unmarshal([]byte(a[annotation]), &annotationData)
+			log.Printf("Specific annotation is required.")
+			a := pod.ObjectMeta.GetAnnotations()
+			_, ok := a[annotation]
+			if !ok {
+				log.Printf("Required '%s' annotation missing; skipping multiarch container injection", annotation)
+				_, err := podClient.Update(initializedPod)
 				if err != nil {
-					log.Println("Error unmarshalling annotation data")
-					return err
+					log.Printf("Pod update failed for %s", initializedPod.GetName())
+					return initializedPod, err
 				}
+				return initializedPod, nil
+			}
 
-				nodeClient := clientset.CoreV1().Nodes()
-				node, err = nodeClient.Get(pod.Spec.NodeName, metav1.GetOptions{})
+			annotationData = make(map[string]map[string]string)
 
+			err := json.Unmarshal([]byte(a[annotation]), &annotationData)
+			if err != nil {
+				log.Println("Error unmarshalling annotation data")
+				return initializedPod, err
+			}
+
+			node, err = nodeClient.Get(pod.Spec.NodeName, metav1.GetOptions{})
+
+			if err != nil {
+				log.Println("Error getting node " + pod.Spec.NodeName)
+				return initializedPod, err
+			}
+
+			if node.Status.NodeInfo.Architecture == "amd64" {
+				_, err := podClient.Update(initializedPod)
 				if err != nil {
-					log.Println("Error getting node " + pod.Spec.NodeName)
-					return err
+					log.Println("Error initializing pod w/ amd64 defaults")
+					return initializedPod, err
 				}
-
-				if node.Status.NodeInfo.Architecture == "amd64" {
-					_, err := clientset.CoreV1().Pods(pod.Namespace).Update(initializedPod)
-					if err != nil {
-						log.Println("Error initializing pod w/ amd64 defaults")
-						return err
-					}
-					return nil
-				}
+				return initializedPod, nil
 			}
 
 			updateContainerSpec(initializedPod.Spec.Containers, initializedPod, node, annotationData)
@@ -165,27 +177,28 @@ func initializePod(pod *corev1.Pod, clientset *kubernetes.Clientset) error {
 
 			oldData, err := json.Marshal(pod)
 			if err != nil {
-				return err
+				return initializedPod, err
 			}
 
 			newData, err := json.Marshal(initializedPod)
 			if err != nil {
-				return err
+				return initializedPod, err
 			}
 
 			patchBytes, err := strategicpatch.CreateTwoWayMergePatch(oldData, newData, corev1.Pod{})
 			if err != nil {
-				return err
+				return initializedPod, err
 			}
 
-			_, err = clientset.CoreV1().Pods(pod.Namespace).Patch(pod.Name, types.StrategicMergePatchType, patchBytes)
+			pod, err = podClient.Patch(pod.Name, types.StrategicMergePatchType, patchBytes)
 			if err != nil {
-				return err
+				return initializedPod, err
 			}
+			return initializedPod, nil
 		}
 	}
 
-	return nil
+	return pod, nil
 }
 
 func updateContainerSpec(containers []corev1.Container, pod *corev1.Pod, node *corev1.Node, annotationData map[string]map[string]string) {
